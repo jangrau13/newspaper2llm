@@ -29,8 +29,7 @@ function Question (props) {
       const response = await axios.post(apiUrl, data, {
         headers: {
           Authorization: `Bearer ${token}`
-        },
-        withCredentials: true
+        }
       });
   
       // Handle the response as needed
