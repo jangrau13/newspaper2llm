@@ -3,10 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()]
-})
-
-export default {
-  base: '/newspaper2llm/',
+  base: '/newspaper2llm/', // Add the base option here
+  plugins: [react()],
   // other Vite configuration options
-}
+})
