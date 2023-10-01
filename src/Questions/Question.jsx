@@ -111,7 +111,7 @@ function Question (props) {
       <h2>Please answer the following questions</h2>
       {clearScreen ? <>
       <h3>Title of generated article</h3>
-      <div class="article">{article}
+      <div class="article">Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam
         </div></> : 
         <div className='cardContainer'>
         {db.map((question, index) => (
