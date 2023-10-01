@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react'
 import TinderCard from 'react-tinder-card'
+import axios from 'axios'
 
 
 function Question (props) {
@@ -8,8 +9,37 @@ function Question (props) {
   const db = questions;
   const [currentIndex, setCurrentIndex] = useState(db.length - 1)
   const [lastDirection, setLastDirection] = useState()
+  const [article, setArticle] = useState()
+  const [prompt, setPrompt] = useState({})
+  const [textareaValue, setTextareaValue] = useState('');
   // used for outOfFrame closure
   const currentIndexRef = useRef(currentIndex)
+
+
+  async function callSupabaseFunction() {
+    console.log('base prompt', prompt)
+    try {
+      const apiUrl = 'https://ukvxwzlvngifhtrxcjzo.supabase.co/functions/v1/helloai';
+      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrdnh3emx2bmdpZmh0cnhjanpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTYwMDUxNTIsImV4cCI6MjAxMTU4MTE1Mn0.3dTRGw8tNa0-ghr8pe6RMNudyoMkEkm0uI9tVRa6whM'; // Replace with your Supabase access token
+      const data = {
+        name: 'Functions',
+        text: 'You are a local newspaper journalist. Write an newspaper article based on the following questions: ' + createZipStringFromObjectValues(prompt)
+      };
+  
+      const response = await axios.post(apiUrl, data, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      // Handle the response as needed
+      console.log('Response:', response.data);
+      setArticle(response.data)
+    } catch (error) {
+      // Handle errors
+      console.error('Error:', error);
+    }
+  }
 
   const clearScreen = currentIndex === -1
 
@@ -30,19 +60,34 @@ function Question (props) {
 
   const canSwipe = currentIndex >= 0
 
+  function createZipStringFromObjectValues(obj) {
+    // Get an array of the object's values
+    const values = Object.values(obj);
+  
+    // Use the Array.prototype.map() method to transform each value
+    // into a string representation and concatenate them with a space
+    const zipString = values.map(value => String(value)).join('; ');
+  
+    return zipString;
+  }
+
   // set last direction and decrease current index
   const swiped = (direction, nameToDelete, index) => {
     setLastDirection(direction)
     updateCurrentIndex(index - 1)
+    setPrompt((prevState) => {
+      const question_and_answer = 'question: ' + nameToDelete + '; answer: ' + textareaValue
+      console.log('adding to prompt: ', question_and_answer)
+      return {...prevState, [nameToDelete]: question_and_answer}
+    })
+    setTextareaValue('')
   }
 
-  const outOfFrame = (name, idx) => {
-    console.log(`${name} (${idx}) left the screen!`, currentIndexRef.current)
-    // handle the case in which go back is pressed before card goes outOfFrame
+  const outOfFrame = (question, idx) => {
+    console.log(`${question} (${idx}) left the screen!`, currentIndexRef.current)
+
+    
     currentIndexRef.current >= idx && childRefs[idx].current.restoreCard()
-    // TODO: when quickly swipe and restore multiple times the same card,
-    // it happens multiple outOfFrame events are queued and the card disappear
-    // during latest swipes. Only the last outOfFrame event should be considered valid
   }
 
   const swipe = async (dir) => {
@@ -59,7 +104,6 @@ function Question (props) {
     await childRefs[newIndex].current.restoreCard()
   }
 
-  
 
   return (
     <div>
@@ -67,25 +111,29 @@ function Question (props) {
       <h2>Please answer the following questions</h2>
       {clearScreen ? <>
       <h3>Title of generated article</h3>
-      <div class="article">
-        Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+      <div class="article">{article}
         </div></> : 
         <div className='cardContainer'>
-        {db.map((character, index) => (
+        {db.map((question, index) => (
           <TinderCard
             ref={childRefs[index]}
             className='swipe'
-            key={character.id}
-            onSwipe={(dir) => swiped(dir, character.name, index)}
-            onCardLeftScreen={() => outOfFrame(character.name, index)}
+            key={question.id}
+            onSwipe={(dir) => swiped(dir, question.question, index)}
+            onCardLeftScreen={() => outOfFrame(question.question, index)}
           >
             <div
               className='card'
             >
-              <h3>{character.question}</h3>
-              <textarea id="story" name="story" rows="5" cols="33">
-                Please answer here.
-              </textarea>
+              <h3>{question.question}</h3>
+              <textarea
+                id={"story" + question.id}
+                name="story"
+                rows="5"
+                cols="33"
+                value={textareaValue}
+                onChange={(e) => setTextareaValue(e.target.value)} 
+        />
             </div>
           </TinderCard>
         ))}
@@ -94,10 +142,11 @@ function Question (props) {
         }
       
       <div className='buttons'>
-        <button style={{ backgroundColor: !canSwipe && '#c3c4d3' }} onClick={() => swipe('left')}>irrelevant</button>
+        <button style={{ backgroundColor:  '#c3c4d3' }} onClick={() => callSupabaseFunction()}>call ChatGPT now</button>
         <button style={{ backgroundColor: !canGoBack && '#c3c4d3' }} onClick={() => goBack()}>undo</button>
         <button style={{ backgroundColor: !canSwipe && '#c3c4d3' }} onClick={() => swipe('right')}>answered</button>
       </div>
+      <div>{article}</div>
     </div>
   )
 }
